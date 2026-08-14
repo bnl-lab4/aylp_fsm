@@ -1,0 +1,78 @@
+{
+	"_comment": [
+		"anyloop:fsm -- the whole steering loop as one pipeline stage.",
+		"Runs on nothing but a synthetic source, so it needs no camera and",
+		"no DAC: `anyloop contrib/anyloop-examples/configurations/conf_fsm_example.json`.",
+		"See doc/devices/fsm.md.",
+		"",
+		"This is the REPLAY shape: the source already supplies the [y,x]",
+		"error, so there is no `sensor` role and the composite is",
+		"controller -> clamp -> actuator. On the bench the source is the",
+		"camera plugin and `sensor` holds center_of_mass or fit_com; the",
+		"stages are otherwise identical, and they run in role order no",
+		"matter what order these keys are written in."
+	],
+	"pipeline": [
+		{
+			"_comment": [
+				"stand-in for camera + center_of_mass: a [y, x] error that",
+				"swings +-0.8 of the frame, which the clamp below will not",
+				"let all the way through to the mirror."
+			],
+			"uri": "anyloop:test_source",
+			"params": {
+				"type": "vector",
+				"kind": "sine",
+				"size1": 2,
+				"frequency": 0.3,
+				"amplitude": 0.8
+			}
+		},
+		{
+			"uri": "anyloop:fsm",
+			"params": {
+				"_sensor": [
+					"On the bench this role holds the wavefront sensor:",
+					"{\"sensor\": {\"threshold\": \"auto\", \"track\": true}}",
+					"is center_of_mass, its default device."
+				],
+				"controller": [
+					{
+						"_comment": "fsp on the bench; pid needs no identified plant",
+						"uri": "anyloop:pid",
+						"params": {
+							"type": "vector",
+							"units": "V",
+							"p": 0.5,
+							"i": 0.1
+						}
+					},
+					{
+						"_comment": [
+							"a tap: an array runs its entries in order, so",
+							"this logger sees the controller's command. In",
+							"the sensor array it would see the measured",
+							"error instead. This is where the udp_sink and",
+							"file_sink entries of a flat steering config go."
+						],
+						"uri": "anyloop:logger"
+					}
+				],
+				"clamp": {"min": -0.4, "max": 0.4},
+				"_actuator": [
+					"stand-in for anyloop:parport_dac. The park write at",
+					"exit goes through this stage, so the last vector",
+					"logged is the parked command rather than a control",
+					"command."
+				],
+				"actuator": "logger",
+				"park_on_exit": true,
+				"park_value": 0.0
+			}
+		},
+		{
+			"uri": "anyloop:stop_after_count",
+			"params": {"count": 8}
+		}
+	]
+}

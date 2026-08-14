@@ -1,0 +1,6 @@
+# meson output
+build
+
+# editor and interpreter artifacts
+__pycache__/
+*.py[cod]

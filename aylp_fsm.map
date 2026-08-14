@@ -1,0 +1,33 @@
+/* Dynamic symbol table for this plug-in.
+ *
+ * Only two kinds of symbol may leave this object:
+ *
+ *   *_init             the device entry points. A stock anyloop loads a plug-in
+ *                      with dlopen() and then dlsym()s "<basename>_init", so
+ *                      every device reachable through a bundle/<device>.so
+ *                      symlink has to be here.
+ *   aylp_timing_*      the loop-timing channel a third-party source plug-in can
+ *   aylp_frame_geometry_*  publish to (see libaylp/timing.h). Exported so an
+ *                      out-of-tree camera can feed fsp's "delay": "auto".
+ *
+ * EVERYTHING else is local, and that is the point rather than tidiness. The
+ * host executable is linked with export_dynamic, so its own libaylp and its own
+ * devices are in the global symbol scope with PRECEDENCE over anything a
+ * dlopen'd object defines. Left exported, this bundle's init_device() would
+ * resolve to the HOST's -- whose init map has never heard of fsp, fit_com or
+ * parport_dac -- and every substage lookup inside fsm would fail or, worse,
+ * silently land on the stock implementation of a device we replaced.
+ *
+ * The same hazard applies in reverse to the *_init symbols we must export, so
+ * the plug-in is additionally linked with -Bsymbolic-functions: references from
+ * inside the plug-in bind to the plug-in's own definitions at link time, even for
+ * symbols that stay visible outside it.
+ */
+{
+	global:
+		*_init;
+		aylp_timing_*;
+		aylp_frame_geometry_*;
+	local:
+		*;
+};
