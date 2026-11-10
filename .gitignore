@@ -4,3 +4,6 @@ build
 # editor and interpreter artifacts
 __pycache__/
 *.py[cod]
+
+# KiCad local history contains its own repository; keep it local.
+**/.history/
